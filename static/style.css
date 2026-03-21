@@ -1,0 +1,134 @@
+/* ===== RESET ===== */
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* ===== BODY ===== */
+body.dark {
+    background: linear-gradient(135deg, #0b0b0b, #1a1a1a);
+    color: #f5f5f5;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== CONTENEDOR ===== */
+.container {
+    max-width: 420px;
+    margin: 40px auto;
+    background: #111;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 0 30px rgba(218,165,32,0.25);
+    border: 1px solid #d4af37;
+}
+
+/* ===== TITULOS ===== */
+h1, h2 {
+    text-align: center;
+    color: #d4af37;
+    margin-bottom: 20px;
+}
+
+/* ===== INPUTS ===== */
+input, select {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 14px;
+    border-radius: 10px;
+    border: none;
+    background: #1f1f1f;
+    color: #fff;
+    font-size: 15px;
+}
+
+input::placeholder {
+    color: #aaa;
+}
+
+/* ===== BOTONES ===== */
+button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* AGENDAR */
+button[type="submit"] {
+    background: linear-gradient(135deg, #d4af37, #b8962e);
+    color: #111;
+}
+
+button[type="submit"]:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 15px rgba(212,175,55,0.6);
+}
+
+/* CANCELAR */
+.btn-cancelar {
+    background: #2a2a2a;
+    color: #ff4d4d;
+    border: 1px solid #ff4d4d;
+}
+
+.btn-cancelar:hover {
+    background: #ff4d4d;
+    color: #111;
+}
+
+/* ===== MENSAJES ===== */
+.ok {
+    background: #1e3d2b;
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.cancelada {
+    background: #3d1e1e;
+    border: 1px solid #ff4d4d;
+    color: #ff4d4d;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* ===== WHATSAPP ===== */
+.whatsapp {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.whatsapp a {
+    display: inline-block;
+    background: #25D366;
+    color: #111;
+    padding: 12px 20px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.whatsapp a:hover {
+    box-shadow: 0 0 15px rgba(37,211,102,0.7);
+}
+
+/* ===== HR ===== */
+hr {
+    border: none;
+    height: 1px;
+    background: #333;
+    margin: 25px 0;
+}

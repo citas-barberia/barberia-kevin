@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Panel del Barbero</title>
+
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-16.png">
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0f0f10; color: #f5f5f5; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+    .box { width: calc(100% - 20px); max-width: 1200px; margin: 10px auto; padding: 16px; background: #1b1b1c; border-radius: 18px; box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+    .topbar{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom: 12px; }
+    h1 { margin: 0; color: #D4AF37; font-size: 36px; line-height: 1.1; }
+    .btn-hist{ text-decoration:none; background:#D4AF37; color:#111; font-weight:800; padding:10px 14px; border-radius:12px; white-space:nowrap; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card { background: #242425; border: 1px solid #2e2e2f; border-radius: 16px; padding: 14px; text-align: center; }
+    .t { opacity: .85; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .v { font-size: 24px; margin-top: 5px; font-weight: 700; }
+    .money { color: #28a745; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+    input, select { flex: 1; min-width: 120px; padding: 12px; border-radius: 12px; background: #121213; color: #fff; border: 1px solid #2f2f30; font-size: 14px; }
+    button { padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; background: #D4AF37; color: #111; font-weight: 700; transition: 0.3s; }
+    button:active { transform: scale(0.98); }
+    button:disabled { background: #444 !important; color: #888 !important; cursor: not-allowed; transform: none; }
+    .small { opacity: .6; font-size: 12px; text-align: center; margin-bottom: 15px; }
+    .citas-mobile-container { display: flex; flex-direction: column; gap: 12px; }
+    .cita-item { background: #242425; border: 1px solid #2e2e2f; border-radius: 16px; padding: 16px; }
+    .cita-row-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 10px; }
+    .cli-name { font-size: 18px; font-weight: 700; color: #D4AF37; }
+    .cli-serv { font-size: 15px; color: #ccc; margin: 4px 0; }
+    .cli-meta { font-size: 13px; opacity: 0.7; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-atender-mobile { width: 100%; margin-top: 12px; background: #D4AF37; color: #111; font-size: 14px; font-weight: bold; }
+    .btn-cancelar-mobile { width: 100%; margin-top: 8px; background: #dc3545; color: #fff; font-size: 14px; font-weight: bold; }
+    .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid #2f2f30; display: none; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 14px; text-align: left; border-bottom: 1px solid #2a2a2b; }
+    th { color: #D4AF37; background: #1a1a1b; font-size: 13px; }
+    .tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .ok { background: #28a745; color: #fff; }
+    .bad { background: #dc3545; color: #fff; }
+    .done { background: #007bff; color: #fff; }
+    @media (min-width: 800px) { .table-wrap { display: block; } .citas-mobile-container { display: none; } h1 { font-size: 42px; } }
+  </style>
+</head>
+
+<body>
+  <div class="box">
+    <div class="topbar">
+      <h1>Panel de {{ stats.get('nombre', 'Junior') }} 💈</h1>
+      <a class="btn-hist" href="/barbero/historial">📊 Ver Historial 2026</a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div style="background: #28a745; color: white; padding: 10px; border-radius: 10px; margin-bottom: 15px; text-align: center; font-weight: bold;">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="stats">
+      <div class="card"><div class="t" id="t_citas">Citas</div><div class="v" id="v_total">{{ stats.cant_total }}</div></div>
+      <div class="card"><div class="t">Activas</div><div class="v" id="v_activas">{{ stats.cant_activas }}</div></div>
+      <div class="card"><div class="t">Atendidas</div><div class="v" id="v_atendidas">{{ stats.cant_atendidas }}</div></div>
+      <div class="card"><div class="t">Canceladas</div><div class="v" id="v_canceladas">{{ stats.cant_canceladas }}</div></div>
+      <div class="card"><div class="t">Total Cobrado</div><div class="v money" id="v_total_cobrado">₡{{ stats.total_atendido }}</div></div>
+    </div>
+
+    <form class="filters" onsubmit="event.preventDefault(); cargarCitas(true);">
+      <select id="solo">
+        <option value="hoy">Hoy</option>
+        <option value="manana">Mañana</option>
+        <option value="todas">Todas</option>
+      </select>
+      <select id="estado">
+        <option value="activas">Activas</option>
+        <option value="atendidas">Atendidas</option>
+        <option value="canceladas">Canceladas</option>
+        <option value="todas">Todas</option>
+      </select>
+      <input id="q" placeholder="Buscar cliente..." />
+      <button type="submit">Aplicar</button>
+    </form>
+
+    <div class="small" id="last_update">Actualizando…</div>
+
+    <div id="cards-container" class="citas-mobile-container"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Precio</th><th>Estado</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+// BLOQUEO DE BOTONES PARA EVITAR QUE SE PEGUE
+function desactivarBoton(form) {
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = "Procesando...";
+    return true; // Permite que el form se envíe
+}
+
+function formatearHora12h(horaStr) {
+    if (!horaStr) return "";
+    let s = String(horaStr).toLowerCase().trim();
+    if (s.includes("am") || s.includes("pm")) return s;
+    let parts = s.split(':');
+    if (parts.length < 2) return s;
+    let horas = parseInt(parts[0]);
+    let minutos = parts[1];
+    const ampm = horas >= 12 ? 'pm' : 'am';
+    horas = horas % 12;
+    horas = horas ? horas : 12; 
+    return `${horas}:${minutos} ${ampm}`;
+}
+
+function precioAInt(p){
+  return parseInt(String(p||"0").replace("₡","").replaceAll(",","").trim()) || 0;
+}
+
+function isoHoy(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function isoManana(){
+  const d = new Date(); d.setDate(d.getDate()+1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function aplicarFiltros(citas){
+  const solo = document.getElementById("solo").value;
+  const estado = document.getElementById("estado").value;
+  const q = (document.getElementById("q").value || "").toLowerCase();
+  const hoy = isoHoy();
+  const manana = isoManana();
+  let base = [...citas];
+
+  if(solo === "hoy") base = base.filter(c => String(c.fecha) === hoy);
+  if(solo === "manana") base = base.filter(c => String(c.fecha) === manana);
+
+  if(estado === "activas") base = base.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio));
+  if(estado === "atendidas") base = base.filter(c => c.servicio === "CITA ATENDIDA");
+  if(estado === "canceladas") base = base.filter(c => c.servicio === "CITA CANCELADA");
+
+  if(q){
+    base = base.filter(c => String(c.cliente||"").toLowerCase().includes(q) || String(c.servicio||"").toLowerCase().includes(q));
+  }
+  base.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.hora).localeCompare(String(b.hora)));
+  return { base, solo, hoy, manana };
+}
+
+function actualizarStats(citasDia){
+  const cant_total = citasDia.length;
+  const cant_canceladas = citasDia.filter(c => c.servicio === "CITA CANCELADA").length;
+  const cant_atendidas = citasDia.filter(c => c.servicio === "CITA ATENDIDA").length;
+  const cant_activas = citasDia.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio)).length;
+  const total_atendido = citasDia.filter(c => c.servicio === "CITA ATENDIDA").reduce((acc,c) => acc + precioAInt(c.precio), 0);
+
+  document.getElementById("v_total").textContent = cant_total;
+  document.getElementById("v_activas").textContent = cant_activas;
+  document.getElementById("v_atendidas").textContent = cant_atendidas;
+  document.getElementById("v_canceladas").textContent = cant_canceladas;
+  document.getElementById("v_total_cobrado").textContent = "₡" + total_atendido;
+}
+
+function renderCitas(citas){
+  const tbody = document.getElementById("tbody");
+  const cardsContainer = document.getElementById("cards-container");
+  tbody.innerHTML = "";
+  cardsContainer.innerHTML = "";
+
+  citas.forEach(c => {
+    const esActiva = !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio);
+    const estadoTxt = c.servicio === "CITA CANCELADA" ? "Cancelada" : (c.servicio === "CITA ATENDIDA" ? "Atendida" : "Activa");
+    const tagClass = c.servicio === "CITA CANCELADA" ? "bad" : (c.servicio === "CITA ATENDIDA" ? "done" : "ok");
+    const horaBonita = formatearHora12h(c.hora);
+
+    // RENDER TABLA (PC)
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.fecha}</td><td>${horaBonita}</td><td>${c.cliente || ""}</td>
+      <td>${c.servicio || ""}</td><td>₡${c.precio || 0}</td>
+      <td><span class="tag ${tagClass}">${estadoTxt}</span></td>
+      <td>
+        ${esActiva ? `
+          <div style="display:flex; gap:5px;">
+            <form method="POST" action="/atendida" onsubmit="return desactivarBoton(this)">
+                <input type="hidden" name="id" value="${c.id}">
+                <button type="submit" style="padding:8px; font-size:11px;">LISTO</button>
+            </form>
+            <form method="POST" action="/cancelar" onsubmit="if(confirm('¿Cancelar cita?')) { return desactivarBoton(this); } else { return false; }">
+                <input type="hidden" name="id" value="${c.id}">
+                <button type="submit" style="background:#dc3545; color:white; padding:8px; font-size:11px;">X</button>
+            </form>
+          </div>
+        ` : ''}
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // RENDER TARJETAS (MÓVIL)
+    const card = document.createElement("div");
+    card.className = "cita-item";
+    card.innerHTML = `
+      <div class="cita-row-main">
+        <div>
+          <div class="cli-name">${c.cliente || ""}</div>
+          <div class="cli-serv">${c.servicio || ""}</div>
+          <div class="cli-meta"><span>📅 ${c.fecha}</span> <span>🕒 ${horaBonita}</span> <span>💰 ₡${c.precio || 0}</span></div>
+        </div>
+        <span class="tag ${tagClass}">${estadoTxt}</span>
+      </div>
+      ${esActiva ? `
+        <form method="POST" action="/atendida" onsubmit="return desactivarBoton(this)">
+            <input type="hidden" name="id" value="${c.id}">
+            <button type="submit" class="btn-atender-mobile">Marcar Atendida</button>
+        </form>
+        <form method="POST" action="/cancelar" onsubmit="if(confirm('¿Cancelar cita?')) { return desactivarBoton(this); } else { return false; }">
+            <input type="hidden" name="id" value="${c.id}">
+            <button type="submit" class="btn-cancelar-mobile">Cancelar Cita</button>
+        </form>
+      ` : ''}
+    `;
+    cardsContainer.appendChild(card);
+  });
+}
+
+async function cargarCitas(guardarParams=false){
+  try{
+    const res = await fetch(`/citas_json?t=${Date.now()}`);
+    const data = await res.json();
+    const citas = data.citas || [];
+    const { base, solo, hoy, manana } = aplicarFiltros(citas);
+    let citasDia = [...citas];
+    if(solo === "hoy") citasDia = citas.filter(c => String(c.fecha) === hoy);
+    if(solo === "manana") citasDia = citas.filter(c => String(c.fecha) === manana);
+    actualizarStats(citasDia);
+    renderCitas(base);
+    document.getElementById("t_citas").textContent = solo === "hoy" ? "Citas (Hoy)" : solo === "manana" ? "Citas (Mañana)" : "Citas (Todas)";
+    document.getElementById("last_update").textContent = "Última actualización: " + new Date().toLocaleTimeString();
+  }catch(e){ document.getElementById("last_update").textContent = "Error al actualizar."; }
+}
+
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get("solo")) document.getElementById("solo").value = params.get("solo");
+  if(params.get("estado")) document.getElementById("estado").value = params.get("estado");
+  if(params.get("q")) document.getElementById("q").value = params.get("q");
+})();
+// Bajamos la frecuencia a 10 segundos para no saturar Render
+setInterval(() => cargarCitas(false), 10000);
+cargarCitas(false);
+</script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Upperline Studio | Junior The Barber</title>
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-16.png">
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            background: #0f0f10; 
+            color: #f5f5f5; 
+            margin: 0; 
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: #1b1b1c;
+            padding: 25px;
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            margin-top: 10px;
+        }
+
+        h1 { 
+            color: #D4AF37; 
+            text-align: center; 
+            font-size: 26px; 
+            margin-bottom: 25px;
+            line-height: 1.3;
+        }
+
+        .form-group { margin-bottom: 18px; }
+
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-size: 14px; 
+            color: #D4AF37;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 16px;
+            background: #242425;
+            border: 1px solid #333;
+            border-radius: 14px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: #D4AF37;
+            background: #2a2a2b;
+        }
+
+        button.btn-principal {
+            width: 100%;
+            padding: 18px;
+            background: #D4AF37;
+            color: #000;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button.btn-principal:active { transform: scale(0.96); }
+
+        /* ✅ BOTÓN WHATSAPP */
+        .btn-whatsapp {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: #25D366;
+            color: #fff;
+            text-decoration: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .tus-citas {
+            margin-top: 40px;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+
+        .cita-card {
+            background: #242425;
+            padding: 18px;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            border-left: 5px solid #D4AF37;
+            position: relative;
+        }
+
+        .cita-card strong { color: #D4AF37; font-size: 17px; display: block; margin-bottom: 5px; }
+        .cita-card span { display: block; font-size: 14px; opacity: 0.8; margin-bottom: 3px; }
+
+        .btn-cancelar {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .flash {
+            background: #D4AF37;
+            color: #000;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="text-align: center; margin-bottom: 25px;">
+        <h1 style="margin-bottom: 5px;">Bienvenido a<br>Upperline Studio</h1>
+        <span style="color: #f5f5f5; font-size: 18px; font-style: italic; opacity: 0.9;">
+            (Junior The Barber) 💈
+        </span>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="flash">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form action="/" method="POST">
+        <input type="hidden" name="cliente_id" value="{{ cliente_id }}">
+        <input type="hidden" name="barbero" value="{{ nombre_barbero }}">
+
+        <div class="form-group">
+            <label>Tu Nombre:</label>
+            <input type="text" name="cliente" placeholder="Escribe tu nombre completo" required>
+        </div>
+        <div class="form-group">
+            <label>Tu WhatsApp:</label>
+            <div style="display: flex; align-items: center; background: #242425; border: 1px solid #333; border-radius: 14px; padding-left: 15px;">
+                <span style="color: #D4AF37; font-weight: bold; margin-right: 5px;">+506</span>
+                <input type="tel" 
+                       name="telefono_cliente" 
+                       placeholder="88887777" 
+                       required 
+                       pattern="[0-9]{8}" 
+                       maxlength="8"
+                       title="Por favor ingresa los 8 dígitos de tu número"
+                       style="border: none; background: transparent; padding: 16px 10px 16px 0; width: 100%; outline: none; color: #fff; font-size: 16px;">
+            </div>
+            <small style="font-size: 11px; color: #888; margin-top: 5px; display: block;">Ingresa solo los 8 dígitos de tu celular.</small>
+        </div>
+
+        <div class="form-group">
+            <label>Servicio:</label>
+            <select name="servicio" required>
+                <option value="" disabled selected>¿Qué servicio buscas?</option>
+                {% for nombre, precio in servicios.items() %}
+                <option value="{{ nombre }}">{{ nombre }} - ₡{{ precio }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Fecha:</label>
+            <input
+                type="date"
+                id="fecha"
+                name="fecha"
+                value="{{ hoy_iso }}"
+                min="{{ hoy_iso }}"
+                required
+                onchange="actualizarHoras()">
+        </div>
+
+        <div class="form-group">
+            <label>Hora disponible:</label>
+            <select name="hora" id="hora_select" required>
+                <option value="">Primero elige una fecha...</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-principal">Reservar Espacio</button>
+
+        <!-- ✅ BOTÓN WHATSAPP -->
+        <a class="btn-whatsapp"
+           href="https://wa.me/{{ numero_barbero }}?text=Hola%20tengo%20una%20consulta%20sobre%20la%20barber%C3%ADa"
+           target="_blank">
+           💬 Consultar por WhatsApp
+        </a>
+    </form>
+
+    <div class="tus-citas">
+        <h2 style="text-align: center; color: #fff; font-size: 20px;">Mis Citas Agendadas</h2>
+
+        {% for c in citas %}
+        <div class="cita-card">
+            <strong>{{ c.servicio }}</strong>
+            <span>📅 Fecha: {{ c.fecha }}</span>
+            <span>🕒 Hora: {{ c.hora }}</span>
+            <span>💰 Precio: {{ c.precio }}</span>
+            
+            {% if c.servicio != "CITA CANCELADA" and c.servicio != "CITA ATENDIDA" and c.cancelable %}
+<form action="/cancelar" method="POST">
+    <input type="hidden" name="id" value="{{ c.id }}">
+    <button type="submit" class="btn-cancelar" onclick="return confirm('¿Seguro que quieres cancelar?')">
+      Cancelar Cita
+    </button>
+</form>
+{% endif %}
+        </div>
+        {% else %}
+        <p style="text-align: center; opacity: 0.5;">Aún no tienes citas.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+async function actualizarHoras() {
+    const fecha = document.getElementById('fecha').value;
+    const barbero = "{{ nombre_barbero }}";
+    const select = document.getElementById('hora_select');
+    
+    select.innerHTML = '<option value="">Cargando horas...</option>';
+
+    try {
+        const res = await fetch(`/horas?fecha=${fecha}&barbero=${barbero}&t=${Date.now()}`);
+        const horas = await res.json();
+
+        select.innerHTML = '';
+
+        if (horas.length === 0) {
+            select.innerHTML = '<option value="">No hay horas disponibles</option>';
+        } else {
+            select.innerHTML = '<option value="" disabled selected>Selecciona la hora</option>';
+            horas.forEach(h => {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.textContent = h;
+                select.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        select.innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+window.onload = actualizarHoras;
+</script>
+
+</body>
+</html>
+
+

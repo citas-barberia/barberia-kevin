@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+derek|Juan|Corte de cabello|10:00
+=======
+derek|Juan|Corte de cabello|10:00
+>>>>>>> fc95a033753445eab450cfaba2e193b67f69b9d5
