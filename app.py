@@ -416,8 +416,9 @@ def citas_json():
     return jsonify({"citas": leer_citas()})
 
 if __name__ == "__main__":
+    # Usamos el puerto que Render nos da, o el 10000 por defecto
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    # Importante: host="0.0.0.0" permite que Render vea la app
     app.run(host="0.0.0.0", port=port)
 
 
