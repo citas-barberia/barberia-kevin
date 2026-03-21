@@ -416,8 +416,7 @@ def citas_json():
     return jsonify({"citas": leer_citas()})
 
 if __name__ == "__main__":
-    # Render usa la variable de entorno PORT
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
 
