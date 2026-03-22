@@ -293,13 +293,15 @@ def horas():
             return jsonify([])
 
         # 2. HORARIO DOMINGO (Forzado de 9am a 7pm para que salgan horas SI O SI)
+        # 2. HORARIO DE KEVIN (Igual a Junior)
         dia_semana = f_obj.weekday()
+        
         if dia_semana == 6: # DOMINGO
-            h_i, h_f = 9, 19 
+            h_i, h_f = 9, 16  # 9am a 4pm
         elif dia_semana in [4, 5]: # VIERNES Y SÁBADO
-            h_i, h_f = 8, 20
+            h_i, h_f = 8, 20  # 8am a 8pm
         else: # LUNES A JUEVES
-            h_i, h_f = 9, 20
+            h_i, h_f = 9, 20  # 9am a 8pm
 
         # 3. Generar horas cada 30 min
         horas_base = []
