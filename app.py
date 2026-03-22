@@ -145,8 +145,14 @@ def guardar_cita_txt(id_cita, cliente, cliente_id, barbero, servicio, precio, fe
 
 def leer_citas_db():
     url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/citas"
-    params = {"select": "*", "order": "fecha.asc,hora.asc"}
+    # AGREGAMOS ESTO: que solo traiga las citas donde el barbero sea Kevin
+    params = {
+        "select": "*",
+        "barbero": "eq.Kevin",  # <--- ESTA LÍNEA ES EL FILTRO MAESTRO
+        "order": "fecha.asc,hora.asc"
+    }
     data = _supabase_request("GET", url, params=params)
+    # ... resto del código igual ...
     if data is None: return None
     
     citas_procesadas = []
@@ -295,76 +301,55 @@ def index():
 @app.route("/horas")
 def horas():
     fecha_str = request.args.get('fecha')
-    barbero = request.args.get('barbero')
+    barbero_solicitado = normalizar_barbero(request.args.get('barbero', 'Kevin'))
     if not fecha_str: return jsonify([])
 
-    # 1. Determinar el día de la semana
+    # 1. Configurar horario según el día
     try:
         fecha_dt = datetime.strptime(fecha_str, "%Y-%m-%d")
-    except:
-        return jsonify([])
-        
+    except: return jsonify([])
+    
     dia_semana = fecha_dt.weekday() 
+    if dia_semana == 6: h_inicio, h_fin = 9, 16 # Domingo
+    elif dia_semana in [4, 5]: h_inicio, h_fin = 8, 20 # Viernes/Sábado
+    else: h_inicio, h_fin = 9, 20 # Lunes-Jueves
 
-    # 2. Configurar apertura y cierre (Horario de UPPERLINE )
-    if dia_semana == 6: h_inicio, h_fin = 9, 16
-    elif dia_semana in [4, 5]: h_inicio, h_fin = 8, 20
-    else: h_inicio, h_fin = 9, 20
-
-    # 3. Generar lista de horas base
+    # 2. Generar horas base
     horas_base = []
     actual = datetime.combine(fecha_dt.date(), datetime.min.time()).replace(hour=h_inicio)
     fin_jornada = datetime.combine(fecha_dt.date(), datetime.min.time()).replace(hour=h_fin)
 
     while actual < fin_jornada:
-        if actual + timedelta(minutes=30) <= fin_jornada:
-            horas_base.append(actual.strftime("%I:%M %p"))
+        horas_base.append(actual.strftime("%I:%M %p").lower()) # "09:00 am"
         actual += timedelta(minutes=30)
 
-    # 4. Lógica de bloqueo de citas ocupadas
-    barbero_norm = normalizar_barbero(barbero)
-    citas = leer_citas()
+    # 3. BUSCAR CITAS OCUPADAS (Aquí estaba el fallo)
+    citas = leer_citas() # Esta función ya trae las citas de Supabase
     minutos_bloqueados = []
 
     for c in citas:
-        if normalizar_barbero(c.get("barbero", "")) == barbero_norm and \
-           str(c.get("fecha")) == fecha_str and \
-           c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]:
+        # Solo bloqueamos si es el MISMO barbero, MISMA fecha y la cita NO está cancelada
+        if normalizar_barbero(c.get("barbero")) == barbero_solicitado and \
+           str(c.get("fecha")).split()[-1] == datetime.strptime(fecha_str, "%Y-%m-%d").strftime("%d/%m/%Y") or str(c.get("fecha")) == fecha_str:
             
-            h_db_dt = _hora_ampm_a_time(c.get("hora"))
-            if h_db_dt:
-                min_inicio = h_db_dt.hour * 60 + h_db_dt.minute
-                dur = int(c.get("duracion", 30))
-                for offset in range(0, dur, 30):
-                    minutos_bloqueados.append(min_inicio + offset)
+            if c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]:
+                h_dt = _hora_ampm_a_time(c.get("hora"))
+                if h_dt:
+                    min_inicio = h_dt.hour * 60 + h_dt.minute
+                    dur = int(c.get("duracion", 30))
+                    # Bloqueamos todos los espacios que dure la cita
+                    for offset in range(0, dur, 30):
+                        minutos_bloqueados.append(min_inicio + offset)
 
-    # 5. Filtrar las horas disponibles (que no estén bloqueadas)
+    # 4. Filtrar
     disponibles = []
     for h in horas_base:
-        h_lista_dt = _hora_ampm_a_time(h)
-        if h_lista_dt:
-            min_actual = h_lista_dt.hour * 60 + h_lista_dt.minute
+        h_dt = _hora_ampm_a_time(h)
+        if h_dt:
+            min_actual = h_dt.hour * 60 + h_dt.minute
             if min_actual not in minutos_bloqueados:
-                disponibles.append(h)
+                disponibles.append(h.upper()) # Devolvemos "09:00 AM"
     
-    # 6. MARGEN DE SEGURIDAD (EL COLCHÓN DE 30 MINUTOS)
-    MARGEN_SEGURIDAD = 30
-    ahora_cr = _now_cr()
-    
-    if str(fecha_str) == ahora_cr.strftime("%Y-%m-%d"):
-        # Minutos actuales en CR + el colchón
-        tiempo_limite = (ahora_cr.hour * 60 + ahora_cr.minute) + MARGEN_SEGURIDAD
-        
-        nuevas_disponibles = []
-        for h in disponibles:
-            h_dt = _hora_ampm_a_time(h)
-            if h_dt:
-                min_cita = h_dt.hour * 60 + h_dt.minute
-                # Solo dejamos pasar las citas que están fuera del margen
-                if min_cita > tiempo_limite:
-                    nuevas_disponibles.append(h)
-        disponibles = nuevas_disponibles
-        
     return jsonify(disponibles)
 
 @app.route("/cancelar", methods=["POST"])
