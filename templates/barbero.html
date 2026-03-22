@@ -189,17 +189,25 @@ function aplicarFiltros(citas){
 }
 
 function actualizarStats(citasDia){
-  const cant_total = citasDia.length;
-  const cant_canceladas = citasDia.filter(c => c.servicio === "CITA CANCELADA").length;
-  const cant_atendidas = citasDia.filter(c => c.servicio === "CITA ATENDIDA").length;
-  const cant_activas = citasDia.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio)).length;
-  const total_atendido = citasDia.filter(c => c.servicio === "CITA ATENDIDA").reduce((acc,c) => acc + precioAInt(c.precio), 0);
+    const cant_total = citasDia.length;
+    const cant_canceladas = citasDia.filter(c => c.servicio === "CITA CANCELADA").length;
+    const cant_atendidas = citasDia.filter(c => c.servicio === "CITA ATENDIDA").length;
+    const cant_activas = citasDia.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio)).length;
+    
+    // MEJORA AQUÍ: Suma de dinero
+    const total_atendido = citasDia
+        .filter(c => c.servicio === "CITA ATENDIDA")
+        .reduce((acc, c) => {
+            // Limpiamos el precio de colones, comas y espacios antes de sumar
+            const precioLimpio = parseInt(String(c.precio || "0").replace(/[₡,.\s]/g, "")) || 0;
+            return acc + precioLimpio;
+        }, 0);
 
-  document.getElementById("v_total").textContent = cant_total;
-  document.getElementById("v_activas").textContent = cant_activas;
-  document.getElementById("v_atendidas").textContent = cant_atendidas;
-  document.getElementById("v_canceladas").textContent = cant_canceladas;
-  document.getElementById("v_total_cobrado").textContent = "₡" + total_atendido;
+    document.getElementById("v_total").textContent = cant_total;
+    document.getElementById("v_activas").textContent = cant_activas;
+    document.getElementById("v_atendidas").textContent = cant_atendidas;
+    document.getElementById("v_canceladas").textContent = cant_canceladas;
+    document.getElementById("v_total_cobrado").textContent = "₡" + total_atendido.toLocaleString('es-CR');
 }
 
 function renderCitas(citas){
