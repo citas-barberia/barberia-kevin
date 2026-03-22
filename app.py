@@ -238,43 +238,75 @@ def buscar_cita_por_id(id_cita):
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
-    # --- PUNTO 1: Agarrar y limpiar el ID ---
+    # 1. Agarrar el ID del cliente (URL o Cookie)
     cliente_id_url = request.args.get("cliente_id")
     cliente_id_cookie = request.cookies.get("cliente_id")
-    
-    # Prioridad URL, luego Cookie, luego nuevo UUID
     cliente_id = cliente_id_url or cliente_id_cookie or str(uuid.uuid4())
 
-    # LIMPIEZA: Si el ID empieza con 506, creamos una versión sin el 506 para buscar
+    # LIMPIEZA: ID sin 506 para que el link de WhatsApp siempre funcione
     id_busqueda = str(cliente_id).replace("506", "") if str(cliente_id).startswith("506") else str(cliente_id)
 
-    hoy_dt = _now_cr()
+    if request.method == "POST":
+        try:
+            cliente = request.form.get("cliente", "").strip()
+            tel_raw = request.form.get("telefono_cliente", "").strip()
+            servicio = request.form.get("servicio", "").strip()
+            fecha = request.form.get("fecha", "").strip()
+            hora_original = request.form.get("hora", "").strip()
+
+            if not cliente or not servicio or not hora_original:
+                flash("Por favor rellene todos los campos.")
+                return redirect(url_for("index", cliente_id=cliente_id))
+
+            # Guardamos el ID limpio (8 dígitos) para que coincida con el link
+            cliente_id_db = tel_raw if len(tel_raw) == 8 else tel_raw.replace("506", "")
+            telefono_full = "506" + cliente_id_db
+            
+            # Formato hora para Supabase
+            dt_h = datetime.strptime(hora_original, "%I:%M %p")
+            hora_db = dt_h.strftime("%H:%M:00")
+            
+            duracion = 60 if "BARBA" in servicio.upper() else 30
+            precio = servicios.get(servicio, 0)
+            id_cita = str(uuid.uuid4())
+
+            # GUARDAR
+            guardar_cita(id_cita, cliente, cliente_id_db, NOMBRE_BARBERO, servicio, precio, fecha, hora_db, duracion)
+
+            # Link de gestión para el cliente
+            link_gestion = f"{DOMINIO}/?cliente_id={cliente_id_db}"
+            msg_c = f"✅ *¡Cita Confirmada!* 💈\n\nHola *{cliente}*, tu espacio para *{servicio}* el {fecha} a las {hora_original} está reservado.\n\nPara gestionar o cancelar presiona aquí:\n{link_gestion}"
+            
+            # Enviar WhatsApps
+            enviar_whatsapp(telefono_full, msg_c)
+            enviar_whatsapp(NUMERO_BARBERO, f"💈 Nueva cita (Kevin): {cliente}\n{servicio}\n{fecha} {hora_original}")
+
+            # Pantalla de confirmación
+            link_wa_directo = f"https://wa.me/{telefono_full}?text={urllib.parse.quote(msg_c)}"
+            return render_template("confirmacion.html", link_wa=link_wa_directo, cliente=cliente)
+            
+        except Exception as e:
+            print(f"Error POST Kevin: {e}")
+            flash("Error al procesar la cita.")
+
+    # 2. Filtrar citas para mostrar el botón de CANCELAR
     citas_todas = leer_citas()
-    
-    # --- PUNTO 3: Filtro flexible (Busca con 506 y sin 506) ---
     citas_cliente = [
         c for c in citas_todas 
-        if (str(c.get("cliente_id")) == str(cliente_id) or str(c.get("cliente_id")) == id_busqueda)
+        if (str(c.get("cliente_id")) == id_busqueda or str(c.get("cliente_id")) == str(cliente_id))
         and c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]
     ]
 
-    if request.method == "POST":
-        # ... (Aquí va tu lógica de guardar cita que ya tenés) ...
-        # Solo un consejo: cuando guardés, usá el 'id_busqueda' para que siempre quede sin 506
-        pass
-
-    # --- RESPUESTA: Guardar cookie y renderizar ---
     resp = make_response(render_template(
         "index.html", 
         servicios=servicios, 
         citas=citas_cliente, 
         cliente_id=cliente_id,
-        nombre_barbero=NOMBRE_BARBERO, # Asegurate que estas variables existan
+        nombre_barbero=NOMBRE_BARBERO,
         numero_barbero=NUMERO_BARBERO,
-        hoy_iso=hoy_dt.strftime("%Y-%m-%d")
+        hoy_iso=_now_cr().strftime("%Y-%m-%d")
     ))
     
-    # Guardamos el ID original en la cookie por 30 días
     resp.set_cookie("cliente_id", cliente_id, max_age=60*60*24*30)
     return resp
 
