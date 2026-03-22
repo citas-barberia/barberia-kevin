@@ -145,16 +145,13 @@ def guardar_cita_txt(id_cita, cliente, cliente_id, barbero, servicio, precio, fe
 
 def leer_citas_db():
     url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/citas"
-    params = {
-        "select": "*",
-        "order": "fecha.asc,hora.asc"
-    }
+    params = {"select": "*", "order": "fecha.asc,hora.asc"}
     data = _supabase_request("GET", url, params=params)
     if data is None: return None
     
     citas_procesadas = []
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     for r in data:
-        # --- LÓGICA DE HORA BONITA ---
         hora_original = str(r.get("hora", ""))
         try:
             hora_obj = datetime.strptime(hora_original, "%H:%M")
@@ -162,25 +159,18 @@ def leer_citas_db():
         except:
             hora_bonita = hora_original
 
-        # --- LÓGICA DE FECHA BONITA (DÍA DE LA SEMANA) ---
         fecha_raw = str(r.get("fecha", ""))
         try:
             fecha_obj = datetime.strptime(fecha_raw, "%Y-%m-%d")
-            dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-            # Resultado: "Lunes 23/03/2026"
             fecha_bonita = f"{dias[fecha_obj.weekday()]} {fecha_obj.strftime('%d/%m/%Y')}"
         except:
             fecha_bonita = fecha_raw
 
         citas_procesadas.append({
-            "id": r.get("id"), 
-            "cliente": r.get("cliente", ""), 
-            "cliente_id": r.get("cliente_id", ""), 
-            "barbero": r.get("barbero", ""), 
-            "servicio": r.get("servicio", ""), 
-            "precio": str(r.get("precio", "")), 
-            "fecha": fecha_bonita, # <-- Aquí pasamos la fecha con el día
-            "hora": hora_bonita,
+            "id": r.get("id"), "cliente": r.get("cliente", ""), 
+            "cliente_id": r.get("cliente_id", ""), "barbero": r.get("barbero", ""), 
+            "servicio": r.get("servicio", ""), "precio": str(r.get("precio", "")), 
+            "fecha": fecha_bonita, "hora": hora_bonita,
             "duracion": str(r.get("duracion", "30"))
         })
     return citas_procesadas
@@ -429,9 +419,7 @@ def citas_json():
     return jsonify({"citas": leer_citas()})
 
 if __name__ == "__main__":
-    # Usamos el puerto que Render nos da, o el 10000 por defecto
     port = int(os.environ.get("PORT", 10000))
-    # Importante: host="0.0.0.0" permite que Render vea la app
     app.run(host="0.0.0.0", port=port)
 
 
