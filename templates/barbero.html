@@ -55,7 +55,7 @@
 <body>
   <div class="box">
     <div class="topbar">
-      <h1>Panel de {{ stats.get('nombre', 'Junior') }} 💈</h1>
+      <h1>Panel de {{ stats.get('nombre', 'kevin') }} 💈</h1>
       <a class="btn-hist" href="/barbero/historial">📊 Ver Historial 2026</a>
     </div>
 
@@ -150,22 +150,42 @@ function aplicarFiltros(citas){
   const solo = document.getElementById("solo").value;
   const estado = document.getElementById("estado").value;
   const q = (document.getElementById("q").value || "").toLowerCase();
-  const hoy = isoHoy();
-  const manana = isoManana();
+  
+  // 1. Obtenemos la fecha de hoy y mañana en formato DD/MM/YYYY
+  const d = new Date();
+  const hoyFormat = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+  
+  const m = new Date(); m.setDate(m.getDate() + 1);
+  const mananaFormat = `${String(m.getDate()).padStart(2,"0")}/${String(m.getMonth()+1).padStart(2,"0")}/${m.getFullYear()}`;
+
   let base = [...citas];
 
-  if(solo === "hoy") base = base.filter(c => String(c.fecha) === hoy);
-  if(solo === "manana") base = base.filter(c => String(c.fecha) === manana);
-
-  if(estado === "activas") base = base.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio));
-  if(estado === "atendidas") base = base.filter(c => c.servicio === "CITA ATENDIDA");
-  if(estado === "canceladas") base = base.filter(c => c.servicio === "CITA CANCELADA");
-
-  if(q){
-    base = base.filter(c => String(c.cliente||"").toLowerCase().includes(q) || String(c.servicio||"").toLowerCase().includes(q));
+  // 2. Filtro por día: Buscamos si el texto de la fecha contiene el día de hoy/mañana
+  if(solo === "hoy") {
+      base = base.filter(c => String(c.fecha).includes(hoyFormat));
+  } else if(solo === "manana") {
+      base = base.filter(c => String(c.fecha).includes(mananaFormat));
   }
-  base.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.hora).localeCompare(String(b.hora)));
-  return { base, solo, hoy, manana };
+
+  // 3. Filtro por estado
+  if(estado === "activas") {
+      base = base.filter(c => !["CITA CANCELADA","CITA ATENDIDA"].includes(c.servicio));
+  } else if(estado === "atendidas") {
+      base = base.filter(c => c.servicio === "CITA ATENDIDA");
+  } else if(estado === "canceladas") {
+      base = base.filter(c => c.servicio === "CITA CANCELADA");
+  }
+
+  // 4. Filtro por búsqueda (nombre del cliente o servicio)
+  if(q){
+    base = base.filter(c => 
+      String(c.cliente||"").toLowerCase().includes(q) || 
+      String(c.servicio||"").toLowerCase().includes(q) ||
+      String(c.fecha||"").toLowerCase().includes(q)
+    );
+  }
+  
+  return { base, solo, hoyFormat, mananaFormat };
 }
 
 function actualizarStats(citasDia){
