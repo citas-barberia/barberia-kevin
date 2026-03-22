@@ -92,12 +92,12 @@ def _now_cr():
 # Servicios y horas
 # =========================
 servicios = {
-    "Corte Difuminado": 5000,
-    "Corte y Barba": 7000,
-    "Corte Clasico": 4500,
-    "Cejas": 1500,
-    "Marcado y Barba": 3500,
-    "Corte Niño": 4500,
+    "Corte sencillo": 4500,
+    "Corte y Barba": 6000,
+    "Corte y lavado": 5500,
+    "Cejas": 2500,
+    "Barba": 2500,
+    
 }
 
 # =========================
@@ -396,7 +396,7 @@ def atendida():
     id_cita = request.form.get("id")
     if barbero_autenticado() and id_cita:
         marcar_atendida_por_id(id_cita)
-        flash("¡Cita completada!") # Agregamos un flash para que Junior vea que sí funcionó
+        flash("¡Cita completada!") # Agregamos un flash para que kevin vea que sí funcionó
     
     return redirect(url_for("barbero"))
 
