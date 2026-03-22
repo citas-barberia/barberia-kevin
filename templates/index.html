@@ -222,7 +222,7 @@
         </a>
     </form>
 
-    <div class="tus-citas">
+ <div class="tus-citas">
         <h2 style="text-align: center; color: #fff; font-size: 20px;">Mis Citas Agendadas</h2>
 
         {% for c in citas %}
@@ -232,20 +232,20 @@
             <span>🕒 Hora: {{ c.hora }}</span>
             <span>💰 Precio: {{ c.precio }}</span>
             
-            {% if c.servicio != "CITA CANCELADA" and c.servicio != "CITA ATENDIDA" and c.cancelable %}
-<form action="/cancelar" method="POST">
-    <input type="hidden" name="id" value="{{ c.id }}">
-    <button type="submit" class="btn-cancelar" onclick="return confirm('¿Seguro que quieres cancelar?')">
-      Cancelar Cita
-    </button>
-</form>
-{% endif %}
+            <form action="/cancelar" method="POST" style="margin-top: 10px;">
+                <input type="hidden" name="id" value="{{ c.id }}">
+                <button type="submit" 
+                        class="btn-cancelar" 
+                        style="width: 100%; padding: 12px; font-weight: bold; text-transform: uppercase;"
+                        onclick="return confirm('¿Estás seguro de que deseas cancelar esta cita?')">
+                    Cancelar Cita
+                </button>
+            </form>
         </div>
         {% else %}
         <p style="text-align: center; opacity: 0.5;">Aún no tienes citas.</p>
         {% endfor %}
     </div>
-</div>
 
 <script>
 async function actualizarHoras() {
