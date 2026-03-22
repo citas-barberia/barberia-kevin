@@ -238,78 +238,96 @@ def buscar_cita_por_id(id_cita):
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
-    # 1. Prioridad: agarrar el ID de la URL o de la Cookie
-    cliente_id = request.args.get("cliente_id") or request.cookies.get("cliente_id")
+    # --- PUNTO 1: Agarrar y limpiar el ID ---
+    cliente_id_url = request.args.get("cliente_id")
+    cliente_id_cookie = request.cookies.get("cliente_id")
     
-    # Si no hay ninguno, creamos uno nuevo (solo para agendar)
-    if not cliente_id:
-        cliente_id = str(uuid.uuid4())
+    # Prioridad URL, luego Cookie, luego nuevo UUID
+    cliente_id = cliente_id_url or cliente_id_cookie or str(uuid.uuid4())
+
+    # LIMPIEZA: Si el ID empieza con 506, creamos una versión sin el 506 para buscar
+    id_busqueda = str(cliente_id).replace("506", "") if str(cliente_id).startswith("506") else str(cliente_id)
 
     hoy_dt = _now_cr()
     citas_todas = leer_citas()
     
-    # 2. Filtrar citas del cliente (Asegúrate de que cliente_id sea string)
-    citas_cliente = [c for c in citas_todas if str(c.get("cliente_id")) == str(cliente_id)]
+    # --- PUNTO 3: Filtro flexible (Busca con 506 y sin 506) ---
+    citas_cliente = [
+        c for c in citas_todas 
+        if (str(c.get("cliente_id")) == str(cliente_id) or str(c.get("cliente_id")) == id_busqueda)
+        and c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]
+    ]
 
-    # ... (resto de tu lógica de POST) ...
+    if request.method == "POST":
+        # ... (Aquí va tu lógica de guardar cita que ya tenés) ...
+        # Solo un consejo: cuando guardés, usá el 'id_busqueda' para que siempre quede sin 506
+        pass
 
-    # 3. AL FINAL: Guardar el ID en una cookie para que no se pierda
-    resp = make_response(render_template("index.html", servicios=servicios, citas=citas_cliente, cliente_id=cliente_id))
-    resp.set_cookie("cliente_id", cliente_id, max_age=60*60*24*30) # Dura 30 días
+    # --- RESPUESTA: Guardar cookie y renderizar ---
+    resp = make_response(render_template(
+        "index.html", 
+        servicios=servicios, 
+        citas=citas_cliente, 
+        cliente_id=cliente_id,
+        nombre_barbero=NOMBRE_BARBERO, # Asegurate que estas variables existan
+        numero_barbero=NUMERO_BARBERO,
+        hoy_iso=hoy_dt.strftime("%Y-%m-%d")
+    ))
+    
+    # Guardamos el ID original en la cookie por 30 días
+    resp.set_cookie("cliente_id", cliente_id, max_age=60*60*24*30)
     return resp
 @app.route("/horas")
 def horas():
-    fecha_str = request.args.get('fecha')
-    barbero_solicitado = normalizar_barbero(request.args.get('barbero', 'Kevin'))
-    if not fecha_str: return jsonify([])
-
-    # 1. Configurar horario según el día
     try:
-        fecha_dt = datetime.strptime(fecha_str, "%Y-%m-%d")
-    except: return jsonify([])
-    
-    dia_semana = fecha_dt.weekday() 
-    if dia_semana == 6: h_inicio, h_fin = 9, 16 # Domingo
-    elif dia_semana in [4, 5]: h_inicio, h_fin = 8, 20 # Viernes/Sábado
-    else: h_inicio, h_fin = 9, 20 # Lunes-Jueves
+        fecha_str = request.args.get('fecha') # "2026-03-22"
+        if not fecha_str: return jsonify([])
 
-    # 2. Generar horas base
-    horas_base = []
-    actual = datetime.combine(fecha_dt.date(), datetime.min.time()).replace(hour=h_inicio)
-    fin_jornada = datetime.combine(fecha_dt.date(), datetime.min.time()).replace(hour=h_fin)
+        f_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        hoy_cr = datetime.now(TZ).date()
+        ahora_cr = datetime.now(TZ).replace(tzinfo=None)
 
-    while actual < fin_jornada:
-        horas_base.append(actual.strftime("%I:%M %p").lower()) # "09:00 am"
-        actual += timedelta(minutes=30)
+        # PUNTO 1: Si la fecha es de ayer o antes, NO mostrar horas
+        if f_obj < hoy_cr:
+            return jsonify([])
 
-    # 3. BUSCAR CITAS OCUPADAS (Aquí estaba el fallo)
-    citas = leer_citas() # Esta función ya trae las citas de Supabase
-    minutos_bloqueados = []
+        # Horario normal de Kevin (Ajustalo si es distinto al de Junior)
+        dia_semana = f_obj.weekday()
+        h_i, h_f = (9, 16) if dia_semana == 6 else (8, 19)
 
-    for c in citas:
-        # Solo bloqueamos si es el MISMO barbero, MISMA fecha y la cita NO está cancelada
-        if normalizar_barbero(c.get("barbero")) == barbero_solicitado and \
-           str(c.get("fecha")).split()[-1] == datetime.strptime(fecha_str, "%Y-%m-%d").strftime("%d/%m/%Y") or str(c.get("fecha")) == fecha_str:
-            
-            if c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]:
-                h_dt = _hora_ampm_a_time(c.get("hora"))
-                if h_dt:
-                    min_inicio = h_dt.hour * 60 + h_dt.minute
-                    dur = int(c.get("duracion", 30))
-                    # Bloqueamos todos los espacios que dure la cita
-                    for offset in range(0, dur, 30):
-                        minutos_bloqueados.append(min_inicio + offset)
+        # Generar horas
+        horas_base = []
+        temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_i)
+        fin = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_f)
+        while temp < fin:
+            horas_base.append(temp.strftime("%H:%M:00")) # Formato "09:00:00"
+            temp += timedelta(minutes=30)
 
-    # 4. Filtrar
-    disponibles = []
-    for h in horas_base:
-        h_dt = _hora_ampm_a_time(h)
-        if h_dt:
-            min_actual = h_dt.hour * 60 + h_dt.minute
-            if min_actual not in minutos_bloqueados:
-                disponibles.append(h.upper()) # Devolvemos "09:00 AM"
-    
-    return jsonify(disponibles)
+        # PUNTO 2: Bloqueo real leyendo de Supabase
+        citas = leer_citas_fuerza_bruta()
+        ocupadas = set()
+        for c in citas:
+            if str(c.get("fecha")) == fecha_str and "CANCELADA" not in str(c.get("servicio")).upper():
+                h_db = str(c.get("hora"))
+                ocupadas.add(h_db)
+                # Si dura más de 30 min, bloqueamos la siguiente
+                if int(c.get("duracion", 30)) > 30:
+                    try:
+                        dt_h = datetime.strptime(h_db, "%H:%M:%S")
+                        ocupadas.add((dt_h + timedelta(minutes=30)).strftime("%H:%M:%S"))
+                    except: pass
+
+        # Filtrar
+        res = []
+        for h in horas_base:
+            h_dt = datetime.strptime(h, "%H:%M:%S")
+            # No mostrar horas que ya pasaron si es HOY
+            if datetime.combine(f_obj, h_dt.time()) > (ahora_cr + timedelta(minutes=15)):
+                if h not in ocupadas:
+                    res.append(h_dt.strftime("%I:%M %p").upper().lstrip('0'))
+        return jsonify(res)
+    except:
+     return jsonify([])
 
 @app.route("/cancelar", methods=["POST"])
 def cancelar():
