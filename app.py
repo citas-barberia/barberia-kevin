@@ -285,20 +285,23 @@ def horas():
         if not fecha_str: return jsonify([])
         
         f_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-        hoy_cr = datetime.now(TZ).date()
         ahora_cr = datetime.now(TZ).replace(tzinfo=None)
+        hoy_cr = ahora_cr.date()
 
-        # 1. BLOQUEO: No mostrar horas si el día ya pasó
+        # 1. Si es ayer, no hay nada que hacer
         if f_obj < hoy_cr:
             return jsonify([])
 
-        # 2. Horario de Kevin (Domingo 9-4, Otros varía)
+        # 2. HORARIO DOMINGO (Forzado de 9am a 7pm para que salgan horas SI O SI)
         dia_semana = f_obj.weekday()
-        if dia_semana == 6: h_i, h_f = 9, 16
-        elif dia_semana in [4, 5]: h_i, h_f = 8, 20
-        else: h_i, h_f = 9, 20
+        if dia_semana == 6: # DOMINGO
+            h_i, h_f = 9, 19 
+        elif dia_semana in [4, 5]: # VIERNES Y SÁBADO
+            h_i, h_f = 8, 20
+        else: # LUNES A JUEVES
+            h_i, h_f = 9, 20
 
-        # 3. Generar horas base
+        # 3. Generar horas cada 30 min
         horas_base = []
         temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_i)
         fin = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_f)
@@ -306,31 +309,35 @@ def horas():
             horas_base.append(temp.strftime("%H:%M:00"))
             temp += timedelta(minutes=30)
 
-        # 4. Leer ocupadas
-        citas = leer_citas_fuerza_bruta()
+        # 4. Bloqueo de Citas (Try por si falla la red)
         ocupadas = set()
-        for c in citas:
-            if str(c.get("fecha")) == fecha_str and "CANCELADA" not in str(c.get("servicio")).upper():
-                h_db = str(c.get("hora"))
-                ocupadas.add(h_db)
-                if int(c.get("duracion", 30)) > 30:
-                    try:
-                        dt_h = datetime.strptime(h_db, "%H:%M:%S") if ":" in h_db else datetime.strptime(h_db, "%H:%M")
-                        ocupadas.add((dt_h + timedelta(minutes=30)).strftime("%H:%M:%S"))
-                    except: pass
+        try:
+            citas = leer_citas_fuerza_bruta()
+            if citas:
+                for c in citas:
+                    if str(c.get("fecha")) == fecha_str and "CANCELADA" not in str(c.get("servicio")).upper():
+                        h_db = str(c.get("hora"))
+                        ocupadas.add(h_db)
+                        # Bloqueo de 1 hora para servicios largos
+                        if "BARBA" in str(c.get("servicio")).upper() or int(c.get("duracion", 30)) > 30:
+                            dt_h = datetime.strptime(h_db, "%H:%M:%S") if ":" in h_db else datetime.strptime(h_db, "%H:%M")
+                            ocupadas.add((dt_h + timedelta(minutes=30)).strftime("%H:%M:%S"))
+        except:
+            print("⚠️ Error leyendo Supabase, mostrando horas libres igual.")
 
-        # 5. Filtrar con el COLCHÓN DE 30 MINUTOS
+        # 5. EL FILTRO (Con colchón de 30 min)
         res = []
         for h in horas_base:
             h_dt = datetime.strptime(h, "%H:%M:%S")
-            # Solo si falta más de 30 min para la cita
+            # Si hoy a las (hora de la cita) es mayor a (ahora + 30 min)
             if datetime.combine(f_obj, h_dt.time()) > (ahora_cr + timedelta(minutes=30)):
                 if h not in ocupadas:
                     res.append(h_dt.strftime("%I:%M %p").upper().lstrip('0'))
                     
         return jsonify(res)
+
     except Exception as e:
-        print(f"Error en horas: {e}")
+        print(f"❌ ERROR CRÍTICO: {e}")
         return jsonify([])
 
 @app.route("/cancelar", methods=["POST"])
