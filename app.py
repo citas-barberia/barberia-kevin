@@ -406,19 +406,45 @@ def atendida():
     id_cita = request.form.get("id")
     if barbero_autenticado() and id_cita:
         marcar_atendida_por_id(id_cita)
-        flash("¡Cita completada!") # Agregamos un flash para que kevin vea que sí funcionó
+        flash("¡Cita completada!") 
     
+    # Redirigir de inmediato para que Kevin no espere
     return redirect(url_for("barbero"))
 
 @app.route("/barbero", methods=["GET"])
 def barbero():
     clave = request.args.get("clave")
     if barbero_autenticado() or clave == CLAVE_BARBERO:
+        # 1. Traemos las citas (Asegúrate que leer_citas() traiga fecha_iso)
         citas = leer_citas()
-        stats = {"cant_total": len(citas), "cant_activas": sum(1 for c in citas if c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]), "total_atendido": sum(_precio_a_int(c.get("precio")) for c in citas if c.get("servicio") == "CITA ATENDIDA"), "nombre": NOMBRE_BARBERO}
+        hoy_iso = _now_cr().strftime("%Y-%m-%d")
+        
+        # 2. FILTRAR SOLO LAS DE HOY PARA LOS STATS
+        # Esto hace que el conteo sea real y rápido
+        citas_hoy = [c for c in citas if str(c.get("fecha_iso")) == hoy_iso or hoy_iso in str(c.get("fecha"))]
+        
+        # 3. CÁLCULOS (Aquí es donde se arregla lo de cobrar 0)
+        atendidas_hoy = [c for c in citas_hoy if c.get("servicio") == "CITA ATENDIDA"]
+        canceladas_hoy = [c for c in citas_hoy if c.get("servicio") == "CITA CANCELADA"]
+        activas_hoy = [c for c in citas_hoy if c.get("servicio") not in ["CITA CANCELADA", "CITA ATENDIDA"]]
+
+        total_dinero = 0
+        for c in atendidas_hoy:
+            total_dinero += _precio_a_int(c.get("precio"))
+
+        stats = {
+            "cant_total": len(citas_hoy),
+            "cant_activas": len(activas_hoy),
+            "cant_atendidas": len(atendidas_hoy),
+            "cant_canceladas": len(canceladas_hoy),
+            "total_cobrado": total_dinero,
+            "nombre": NOMBRE_BARBERO
+        }
+        
         resp = make_response(render_template("barbero.html", citas=citas, stats=stats))
         resp.set_cookie("clave_barbero", CLAVE_BARBERO, max_age=60*60*24*7)
         return resp
+        
     return "🔒 Panel protegido."
 
 @app.route("/citas_json")
