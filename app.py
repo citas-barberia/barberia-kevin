@@ -156,7 +156,7 @@ def leer_citas_db():
     citas_procesadas = []
     for r in data:
         hora_original = str(r.get("hora", ""))
-        # Convertimos la hora de 24h a 12h para que Junior la vea bonita
+        # Convertimos la hora de 24h a 12h para que kevin la vea bonita
         try:
             hora_obj = datetime.strptime(hora_original, "%H:%M")
             hora_bonita = hora_obj.strftime("%I:%M %p").lower()
