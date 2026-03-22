@@ -281,69 +281,56 @@ def index():
 @app.route("/horas")
 def horas():
     try:
-        fecha_str = request.args.get('fecha') # "2026-03-22"
+        fecha_str = request.args.get('fecha')
         if not fecha_str: return jsonify([])
-
+        
         f_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
         hoy_cr = datetime.now(TZ).date()
         ahora_cr = datetime.now(TZ).replace(tzinfo=None)
 
-        # 1. Bloqueo de días pasados
+        # 1. BLOQUEO: No mostrar horas si el día ya pasó
         if f_obj < hoy_cr:
             return jsonify([])
 
-        # 2. HORARIO DE KEVIN (Asegurate de que estos sean sus horarios reales)
+        # 2. Horario de Kevin (Domingo 9-4, Otros varía)
         dia_semana = f_obj.weekday()
-        if dia_semana == 6: # DOMINGO
-            h_inicio, h_fin = 9, 16
-        elif dia_semana in [4, 5]: # VIERNES Y SÁBADO
-            h_inicio, h_fin = 8, 20
-        else: # LUNES A JUEVES
-            h_inicio, h_fin = 9, 20
+        if dia_semana == 6: h_i, h_f = 9, 16
+        elif dia_semana in [4, 5]: h_i, h_f = 8, 20
+        else: h_i, h_f = 9, 20
 
-        # 3. Generar horas base (Formato "09:00:00")
-        horas_base_db = []
-        temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_inicio)
-        fin_jornada = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_fin)
-        
-        while temp < fin_jornada:
-            horas_base_db.append(temp.strftime("%H:%M:00"))
+        # 3. Generar horas base
+        horas_base = []
+        temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_i)
+        fin = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_f)
+        while temp < fin:
+            horas_base.append(temp.strftime("%H:%M:00"))
             temp += timedelta(minutes=30)
 
-        # 4. LEER CITAS DE SUPABASE
-        citas = leer_citas_fuerza_bruta() # Asegurate de que esta función esté definida arriba
+        # 4. Leer ocupadas
+        citas = leer_citas_fuerza_bruta()
         ocupadas = set()
-        
         for c in citas:
-            f_db = str(c.get("fecha", ""))
-            srv = str(c.get("servicio", ""))
-            # Si es el mismo día y no está cancelada
-            if fecha_str in f_db and "CANCELADA" not in srv.upper():
-                h_db = str(c.get("hora", ""))
+            if str(c.get("fecha")) == fecha_str and "CANCELADA" not in str(c.get("servicio")).upper():
+                h_db = str(c.get("hora"))
                 ocupadas.add(h_db)
-                # Bloqueo extra si dura más de 30 min
                 if int(c.get("duracion", 30)) > 30:
                     try:
-                        h_dt = datetime.strptime(h_db, "%H:%M:%S")
-                        prox = (h_dt + timedelta(minutes=30)).strftime("%H:%M:%S")
-                        ocupadas.add(prox)
+                        dt_h = datetime.strptime(h_db, "%H:%M:%S") if ":" in h_db else datetime.strptime(h_db, "%H:%M")
+                        ocupadas.add((dt_h + timedelta(minutes=30)).strftime("%H:%M:%S"))
                     except: pass
 
-        # 5. Filtrar Pasadas y Ocupadas
-        resultado = []
-        for h_db in horas_base_db:
-            h_time = datetime.strptime(h_db, "%H:%M:%S").time()
-            dt_cita = datetime.combine(f_obj, h_time)
-            
-            # Margen de 10 minutos para que pueda agendar "ya mismo" si está libre
-            if dt_cita > (ahora_cr + timedelta(minutes=10)):
-                if h_db not in ocupadas:
-                    resultado.append(datetime.strptime(h_db, "%H:%M:%S").strftime("%I:%M %p").upper().lstrip('0'))
-        
-        return jsonify(resultado)
-
+        # 5. Filtrar con el COLCHÓN DE 30 MINUTOS
+        res = []
+        for h in horas_base:
+            h_dt = datetime.strptime(h, "%H:%M:%S")
+            # Solo si falta más de 30 min para la cita
+            if datetime.combine(f_obj, h_dt.time()) > (ahora_cr + timedelta(minutes=30)):
+                if h not in ocupadas:
+                    res.append(h_dt.strftime("%I:%M %p").upper().lstrip('0'))
+                    
+        return jsonify(res)
     except Exception as e:
-        print(f"ERROR HORAS KEVIN: {e}")
+        print(f"Error en horas: {e}")
         return jsonify([])
 
 @app.route("/cancelar", methods=["POST"])
