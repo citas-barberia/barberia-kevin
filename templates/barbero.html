@@ -245,7 +245,7 @@ function renderCitas(citas){
     `;
     tbody.appendChild(tr);
 
-    // RENDER TARJETAS (MÓVIL)
+    // RENDER TARJETAS (MÓVIL) - CORREGIDO AQUÍ
     const card = document.createElement("div");
     card.className = "cita-item";
     card.innerHTML = `
@@ -266,17 +266,11 @@ function renderCitas(citas){
             <input type="hidden" name="id" value="${c.id}">
             <button type="submit" class="btn-cancelar-mobile">Cancelar Cita</button>
         </form>
-        // Dentro de renderCitas, en la parte de PC y Móvil
-<form method="POST" action="/atendida" onsubmit="return desactivarBoton(this)">
-    <input type="hidden" name="id" value="${c.id}">
-    <button type="submit" class="btn-atender-mobile">Marcar Atendida</button>
-</form>
       ` : ''}
     `;
     cardsContainer.appendChild(card);
   });
 }
-
 async function cargarCitas(guardarParams=false){
   try {
     const res = await fetch(`/citas_json?t=${Date.now()}`);
