@@ -323,70 +323,74 @@ def horas():
         if f_obj < hoy_cr:
             return jsonify([])
 
-        # Horarios según el día
+        # 1. Definir horario del día
         dia_semana = f_obj.weekday()
-        if dia_semana == 6: # DOMINGO
-            h_i, h_f = 9, 16 
-        elif dia_semana in [4, 5]: # VIERNES Y SÁBADO
-            h_i, h_f = 8, 20
-        else: # LUNES A JUEVES
-            h_i, h_f = 9, 20
+        if dia_semana == 6: h_i, h_f = 9, 16
+        elif dia_semana in [4, 5]: h_i, h_f = 8, 20
+        else: h_i, h_f = 9, 20
 
-        # Generar horas base cada 30 min
-        horas_base = []
-        temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_i)
-        fin = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_f)
-        while temp < fin:
-            horas_base.append(temp.strftime("%H:%M:00"))
-            temp += timedelta(minutes=30)
-
-        # --- BLOQUEO DE CITAS CORREGIDO ---
+        # 2. Obtener TODAS las citas para filtrar
         ocupadas = set()
-        citas = leer_citas() # Cambiado de leer_citas_fuerza_bruta a leer_citas
+        citas = leer_citas()
         
         if citas:
             for c in citas:
-                # Normalizamos la fecha para comparar (quitamos nombres de días si los hay)
-                # Si la fecha en la DB viene como "Lunes 23/03/2026", hay que extraer solo el ISO o comparar bien
-                # Aquí asumimos que comparamos contra el campo que tenga la fecha pura
-                fecha_cita = str(c.get("fecha"))
+                # OJO: Filtramos que la fecha coincida y NO esté cancelada
+                # Usamos 'in' por si la fecha trae el nombre del día (ej: "Martes 24/03/2026")
+                # El formato de fecha_str es "2026-03-24", ocupamos que coincida con el TXT/DB
                 
-                # Si la cita coincide con el día y NO está cancelada
-                if fecha_str in fecha_cita and "CANCELADA" not in str(c.get("servicio")).upper():
-                    h_db = str(c.get("hora"))
-                    
-                    # Normalizamos la hora de la DB a formato HH:MM:00 para que coincida con horas_base
-                    try:
-                        # Si viene "09:00 am", lo pasamos a "09:00:00"
-                        if "am" in h_db.lower() or "pm" in h_db.lower():
-                            h_dt = datetime.strptime(h_db.lower().strip(), "%I:%M %p")
-                        else:
-                            # Si viene "09:00" o "09:00:00"
-                            h_dt = datetime.strptime(h_db.split(":")[0] + ":" + h_db.split(":")[1], "%H:%M")
-                        
-                        hora_formateada = h_dt.strftime("%H:%M:00")
-                        ocupadas.add(hora_formateada)
-                        
-                        # Bloqueo de 1 hora si el servicio es largo o es Barba
-                        if "BARBA" in str(c.get("servicio")).upper() or int(c.get("duracion", 30)) > 30:
-                            bloqueo_extra = (h_dt + timedelta(minutes=30)).strftime("%H:%M:00")
-                            ocupadas.add(bloqueo_extra)
-                    except Exception as e:
-                        print(f"Error parseando hora {h_db}: {e}")
+                srv = str(c.get("servicio")).upper()
+                if "CANCELADA" in srv:
+                    continue
 
-        # Filtro final
+                # Verificamos si la cita pertenece a la fecha consultada
+                # Formateamos la fecha de la cita para comparar (asumiendo DD/MM/YYYY en la DB)
+                f_cita_db = str(c.get("fecha"))
+                dia_solicitado = f_obj.strftime("%d/%m/%Y")
+
+                if dia_solicitado in f_cita_db or fecha_str in f_cita_db:
+                    h_db = str(c.get("hora")).lower().strip()
+                    
+                    try:
+                        # Convertimos cualquier hora de la DB a objeto time para normalizar
+                        if "am" in h_db or "pm" in h_db:
+                            h_obj = datetime.strptime(h_db.replace(" ", ""), "%I:%M%p").time()
+                        else:
+                            # Por si viene "09:00:00" o "09:00"
+                            h_obj = datetime.strptime(":".join(h_db.split(":")[:2]), "%H:%M").time()
+                        
+                        # Guardamos en formato "HH:MM" (24h) para comparar fácil
+                        hora_key = h_obj.strftime("%H:%M")
+                        ocupadas.add(hora_key)
+
+                        # Si es servicio de BARBA, bloqueamos también la siguiente media hora
+                        if "BARBA" in srv:
+                            prox = (datetime.combine(date.today(), h_obj) + timedelta(minutes=30)).time()
+                            ocupadas.add(prox.strftime("%H:%M"))
+                    except:
+                        continue
+
+        # 3. Generar horas disponibles
         res = []
-        for h in horas_base:
-            h_dt = datetime.strptime(h, "%H:%M:%S")
-            # Margen de 30 min para citas de hoy
-            if datetime.combine(f_obj, h_dt.time()) > (ahora_cr + timedelta(minutes=30)):
-                if h not in ocupadas:
-                    res.append(h_dt.strftime("%I:%M %p").upper().lstrip('0'))
+        temp = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_i)
+        fin = datetime.combine(f_obj, datetime.min.time()).replace(hour=h_f)
+        
+        while temp < fin:
+            h_actual_24 = temp.strftime("%H:%M")
+            
+            # Solo agregar si:
+            # A) No está en el set de ocupadas
+            # B) Si es hoy, que falten al menos 30 min para esa hora
+            if h_actual_24 not in ocupadas:
+                if temp > (ahora_cr + timedelta(minutes=30)):
+                    res.append(temp.strftime("%I:%M %p").lstrip('0'))
+            
+            temp += timedelta(minutes=30)
                     
         return jsonify(res)
 
     except Exception as e:
-        print(f"❌ ERROR CRÍTICO EN /HORAS: {e}")
+        print(f"❌ ERROR EN /HORAS: {e}")
         return jsonify([])
 
 @app.route("/cancelar", methods=["POST"])
