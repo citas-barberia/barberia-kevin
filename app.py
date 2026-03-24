@@ -414,9 +414,19 @@ def atendida():
     # Redirigir de inmediato para que Kevin no espere
     return redirect(url_for("barbero"))
 
+
 @app.route("/barbero", methods=["GET"])
 def barbero():
+    # --- AGREGA ESTO PARA EL CELULAR ---
+    clave_url = request.args.get("clave")
+    if clave_url == CLAVE_BARBERO:
+        resp = make_response(render_template("barbero.html", citas=[], stats={})) # Carga temporal
+        resp.set_cookie("clave_barbero", CLAVE_BARBERO, max_age=60*60*24*30) # 30 días
+        return redirect(url_for("barbero")) 
+    # -----------------------------------
+
     if not barbero_autenticado(): return "🔒"
+    # ... resto de tu código
     
     citas = leer_citas()
     hoy_iso = _now_cr().strftime("%Y-%m-%d")

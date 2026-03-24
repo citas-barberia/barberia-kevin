@@ -278,19 +278,27 @@ function renderCitas(citas){
 }
 
 async function cargarCitas(guardarParams=false){
-  try{
+  try {
     const res = await fetch(`/citas_json?t=${Date.now()}`);
     const data = await res.json();
     const citas = data.citas || [];
-    const { base, solo, hoy, manana } = aplicarFiltros(citas);
+    
+    // CORRECCIÓN AQUÍ: Usar los nombres correctos que devuelve aplicarFiltros
+    const { base, solo, hoyFormat, mananaFormat } = aplicarFiltros(citas); 
+    
     let citasDia = [...citas];
-    if(solo === "hoy") citasDia = citas.filter(c => String(c.fecha) === hoy);
-    if(solo === "manana") citasDia = citas.filter(c => String(c.fecha) === manana);
+    if(solo === "hoy") citasDia = citas.filter(c => String(c.fecha).includes(hoyFormat));
+    if(solo === "manana") citasDia = citas.filter(c => String(c.fecha).includes(mananaFormat));
+    
     actualizarStats(citasDia);
     renderCitas(base);
+    
     document.getElementById("t_citas").textContent = solo === "hoy" ? "Citas (Hoy)" : solo === "manana" ? "Citas (Mañana)" : "Citas (Todas)";
-    document.getElementById("last_update").textContent = "Última actualización: " + new Date().toLocaleTimeString();
-  }catch(e){ document.getElementById("last_update").textContent = "Error al actualizar."; }
+    document.getElementById("last_update").textContent = "Actualizado: " + new Date().toLocaleTimeString();
+  } catch(e) { 
+    console.error(e);
+    document.getElementById("last_update").textContent = "Error al actualizar."; 
+  }
 }
 
 (function(){
