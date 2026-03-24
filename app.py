@@ -417,25 +417,26 @@ def atendida():
 
 @app.route("/barbero", methods=["GET"])
 def barbero():
-    # --- AGREGA ESTO PARA EL CELULAR ---
+    # 1. PASO NUEVO: Si viene la clave en el link (?clave=1234), la guardamos
     clave_url = request.args.get("clave")
     if clave_url == CLAVE_BARBERO:
-        resp = make_response(render_template("barbero.html", citas=[], stats={})) # Carga temporal
-        resp.set_cookie("clave_barbero", CLAVE_BARBERO, max_age=60*60*24*30) # 30 días
-        return redirect(url_for("barbero")) 
-    # -----------------------------------
+        # Redirigimos a la misma página para limpiar la URL, pero dejando la cookie puesta
+        resp = make_response(redirect(url_for("barbero")))
+        resp.set_cookie("clave_barbero", CLAVE_BARBERO, max_age=60*60*24*30, httponly=True)
+        return resp
 
-    if not barbero_autenticado(): return "🔒"
-    # ... resto de tu código
-    
+    # 2. Tu seguridad de siempre
+    if not barbero_autenticado(): 
+        return "🔒 Acceso denegado. Use el link con clave."
+
+    # 3. Tu lógica original (Mantenemos tus stats y filtros)
     citas = leer_citas()
     hoy_iso = _now_cr().strftime("%Y-%m-%d")
     
     # Filtramos solo lo de hoy
     citas_hoy = [c for c in citas if str(c.get("fecha_iso")) == hoy_iso or hoy_iso in str(c.get("fecha"))]
     
-    # CALCULOS DE STATS
-    # Importante: sumamos solo si el servicio es "CITA ATENDIDA"
+    # CALCULOS DE STATS (Igual a como lo tenías)
     atendidas = [c for c in citas_hoy if c.get("servicio") == "CITA ATENDIDA"]
     total_cobrado = sum(_precio_a_int(c.get("precio")) for c in atendidas)
 
@@ -449,6 +450,7 @@ def barbero():
     }
     
     return render_template("barbero.html", citas=citas, stats=stats)
+
 @app.route("/citas_json")
 def citas_json():
     return jsonify({"citas": leer_citas()})
