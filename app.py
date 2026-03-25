@@ -279,9 +279,13 @@ def index():
             precio = servicios.get(servicio, 0)
             id_cita = str(uuid.uuid4())
 
-            # GUARDAR
-            guardar_cita(id_cita, cliente, cliente_id_db, NOMBRE_BARBERO, servicio, precio, fecha, hora_db, duracion)
-
+            # GUARDAR con validación de duplicados
+            try:
+                guardar_cita(id_cita, cliente, cliente_id_db, NOMBRE_BARBERO, servicio, precio, fecha, hora_db, duracion)
+            except Exception as e:
+                print(f"⚠️ Intento de cita duplicada o error: {e}")
+                flash("Ese espacio ya fue reservado por alguien más. Por favor elige otra hora.")
+                return redirect(url_for("index", cliente_id=cliente_id))
             # Link de gestión para el cliente
             link_gestion = f"{DOMINIO}/?cliente_id={cliente_id_db}"
             msg_c = f"✅ *¡Cita Confirmada!* 💈\n\nHola *{cliente}*, tu espacio para *{servicio}* el {fecha} a las {hora_original} está reservado.\n\nPara gestionar o cancelar presiona aquí:\n{link_gestion}"
@@ -332,11 +336,15 @@ def horas():
         if f_obj < hoy_cr:
             return jsonify([])
 
-        # 1. Definir horario del día
+        # 1. Definir horario de Kevin
         dia_semana = f_obj.weekday()
-        if dia_semana == 6: h_i, h_f = 9, 16
-        elif dia_semana in [4, 5]: h_i, h_f = 8, 20
-        else: h_i, h_f = 9, 20
+        if dia_semana == 6: # Domingo
+            return jsonify([]) # Cerrado, no devuelve horas
+        elif dia_semana == 5: # Sábado
+            h_i, h_f = 8, 19   # 8am a 7pm
+        else: # Lunes a Viernes
+            h_i, h_f = 9, 21   # 9am a 9pm
+        
 
         # 2. Obtener TODAS las citas para filtrar
         ocupadas = set()
