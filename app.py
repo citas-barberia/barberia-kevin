@@ -92,11 +92,10 @@ def _now_cr():
 # Servicios y horas
 # =========================
 servicios = {
-    "Corte sencillo": 4500,
+    "Corte": 4500,
     "Corte y Barba": 6000,
-    "Corte y lavado": 5500,
-    "Cejas": 2500,
-    "Barba": 2500,
+    "Marcado de Cejas": 2000,
+    "Marcado de Barba": 3000,
     
 }
 
